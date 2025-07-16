@@ -46,7 +46,7 @@ A complete School Management System built with modern technologies to manage stu
 ## 🧪 Setup Instructions
 
 ### Prerequisites:
-- Node.js (v18+)
+- Node.js (v22+)
 - MySQL or MongoDB
 - npm / yarn
 
