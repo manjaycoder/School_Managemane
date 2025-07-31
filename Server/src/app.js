@@ -14,16 +14,12 @@ import feesRoutes from "./Routes/feesRoutes.js";
 import "./Config/db.js";
 import CreateAccount from "./Routes/accountRoutes.js";
 
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
-const port = 4000
-
+const port = process.env.PORT || 4000;
 app.use(express.json());
 app.use(cors());
-
-
 
 const uploadDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadDir)) {
@@ -53,7 +49,7 @@ app.use((err, req, res, next) => {
   console.error("❗ Server Error:", err.message, err.stack);
   res.status(500).json({
     error: "Something went wrong!",
-    details: err.message // TEMPORARILY SEND ERROR MESSAGE
+    details: err.message, // TEMPORARILY SEND ERROR MESSAGE
   });
 });
 app.listen(port, () => {
