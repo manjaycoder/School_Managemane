@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-
+import Port from "../Components/link.js"
 const AccountList = () => {
   const [accounts, setAccounts] = useState([]);
   const [editingAccount, setEditingAccount] = useState(null);
@@ -23,7 +23,7 @@ const AccountList = () => {
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this account?")) return;
     try {
-      await fetch(`http://localhost:5000/api/accounts/${id}`, { method: "DELETE" });
+      await fetch(`${Port}/api/accounts/${id}`, { method: "DELETE" });
       fetchAccounts();
     } catch (error) {
       console.error("Error deleting account:", error);
@@ -33,7 +33,7 @@ const AccountList = () => {
   // Save updated account
   const handleUpdate = async () => {
     try {
-      await fetch(`http://localhost:5000/api/accounts/${editingAccount.id}`, {
+      await fetch(`${Port}/api/accounts/${editingAccount.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editingAccount),

@@ -1,22 +1,11 @@
-import React, { useState, useEffect } from "react";
-import AdminNav from "../Components/AdminNav.jsx";
-import { Sidebar, Menu, MenuItem, SubMenu } from "react-pro-sidebar";
-import {
-  FiHome,
-  FiUsers,
-  FiBook,
-  FiDollarSign,
-  FiFileText,
-  FiDownload,
-  FiAward,
-  FiSettings,
-  FiClock,
-  FiSearch,
-} from "react-icons/fi";
+import { useState, useEffect } from "react";
+import Port from "../Components/link.js";
+import { FiSearch } from "react-icons/fi";
 import { IoIosArrowForward } from "react-icons/io";
 import axios from "axios";
 import "../index.css";
 import MainLayout from "../layout/MainLayout.jsx";
+import {  FiDownload } from "react-icons/fi";  // Added FiDownload
 
 const StudentAdmissionForm = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -97,7 +86,7 @@ const StudentAdmissionForm = () => {
       try {
         // Fetch classes with sections
         const classesResponse = await axios.get(
-          "http://localhost:3000/api/classes/with-sections"
+          `${Port}/api/classes/with-sections`
         );
         setClassesWithSections(classesResponse.data);
 
@@ -191,7 +180,7 @@ const StudentAdmissionForm = () => {
   useEffect(() => {
     const fetchRoutes = async () => {
       try {
-        const { data } = await axios.get("http://localhost:3000/routes");
+        const { data } = await axios.get(`${Port}/routes`);
         setRoutes(data);
       } catch (err) {
         console.error("Failed to fetch routes:", err);
@@ -333,7 +322,7 @@ const StudentAdmissionForm = () => {
       }
 
       const response = await axios.post(
-        "http://localhost:3000/api/students/",
+        `${Port}/api/students/`,
         formDataToSend,
         {
           headers: {
@@ -471,9 +460,7 @@ const StudentAdmissionForm = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
-     <MainLayout>
-     
-
+      <MainLayout>
         <div className="">
           {/* Page Header */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
@@ -713,7 +700,7 @@ const StudentAdmissionForm = () => {
                       <div className="flex space-x-2 mt-2">
                         <button
                           type="button"
-                          onClick={() => window.open("/routes", "_blank")}
+                          onClick={() => window.location.replace(`/routes`)}
                           className="text-xs bg-green-100 text-green-600 px-2 py-1 rounded hover:bg-green-200"
                         >
                           ➕
@@ -1267,9 +1254,8 @@ const StudentAdmissionForm = () => {
             </div>
           </div>
         </div>
-        </MainLayout>
-      </div>
-   
+      </MainLayout>
+    </div>
   );
 };
 

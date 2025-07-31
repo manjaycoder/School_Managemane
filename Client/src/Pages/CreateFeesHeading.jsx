@@ -1,5 +1,6 @@
 import { useState } from "react";
 import MainLayout from "../layout/MainLayout";
+import Port from "../Components/link.js";
 const monthsList = [
   "Jan",
   "Feb",
@@ -104,7 +105,7 @@ const CreateFeesHeading = () => {
 
     setIsLoading(true);
     try {
-      const res = await fetch("http://localhost:3000/api/fees/", {
+      const res = await fetch(`${Port}/api/fees/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -130,10 +131,9 @@ const CreateFeesHeading = () => {
   };
 
   return (
-    
-      <div className="flex min-h-screen bg-gray-50">
-        {/* Sidebar */}
-<MainLayout>
+    <div className="flex min-h-screen bg-gray-50">
+      {/* Sidebar */}
+      <MainLayout>
         <div className="">
           <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-md p-6">
             <h2 className="text-2xl font-bold text-blue-600 mb-6 border-b pb-2">
@@ -366,9 +366,8 @@ const CreateFeesHeading = () => {
             )}
           </div>
         </div>
-        </MainLayout>
-      </div>
-   
+      </MainLayout>
+    </div>
   );
 };
 

@@ -4,7 +4,7 @@ import MainLayout from "../layout/MainLayout";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { Plus } from "lucide-react";
-
+import Port from "../Components/link.js"
 const monthsList = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
@@ -51,7 +51,7 @@ const CreateFeesHeading = () => {
 
   const fetchFeesList = async () => {
     try {
-      const res = await axios.get("http://localhost:3000/api/fees");
+      const res = await axios.get(`${Port}/api/fees`);
       setFeesList(res.data.data);
     } catch (err) {
       toast.error("❌ Failed to fetch fees list");
@@ -105,10 +105,10 @@ const CreateFeesHeading = () => {
   const handleSubmit = async () => {
     try {
       if (editId) {
-        await axios.put(`http://localhost:3000/api/fees/${editId}`, formData);
+        await axios.put(`${Port}/api/fees/${editId}`, formData);
         toast.success("✅ Fee Heading updated successfully!");
       } else {
-        await axios.post("http://localhost:3000/api/fees", formData);
+        await axios.post(`${Port}/api/fees`, formData);
         toast.success("✅ Fee Heading saved successfully!");
       }
       setFormData({
@@ -140,7 +140,7 @@ const CreateFeesHeading = () => {
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this fee heading?")) return;
     try {
-      await axios.delete(`http://localhost:3000/api/fees/${id}`);
+      await axios.delete(`${Port}/api/fees/${id}`);
       toast.success("🗑️ Fee heading deleted");
       fetchFeesList();
     } catch (err) {

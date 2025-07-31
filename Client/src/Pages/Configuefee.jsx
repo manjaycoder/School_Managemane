@@ -4,7 +4,7 @@ import axios from "axios";
 import { Trash2 } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
+import Port from "../Components/link.js";
 const ConfigureFeesPlan = () => {
   const [feeHeadings, setFeeHeadings] = useState([]);
   const [feesHeading, setFeesHeading] = useState("");
@@ -14,11 +14,24 @@ const ConfigureFeesPlan = () => {
   const [dataTable, setDataTable] = useState([]);
 
   const [classList, setClassList] = useState([
-    "10th", "9th", "8th", "7th", "6th", "5th",
-    "4th", "3rd", "2nd", "1st", "Nursery", "L.K.G", "U.K.G"
+    "10th",
+    "9th",
+    "8th",
+    "7th",
+    "6th",
+    "5th",
+    "4th",
+    "3rd",
+    "2nd",
+    "1st",
+    "Nursery",
+    "L.K.G",
+    "U.K.G",
   ]);
   const [categoryList, setCategoryList] = useState([
-    "New Student", "Old Student", "General"
+    "New Student",
+    "Old Student",
+    "General",
   ]);
 
   const [newClass, setNewClass] = useState("");
@@ -27,7 +40,7 @@ const ConfigureFeesPlan = () => {
   useEffect(() => {
     const fetchFeeHeadings = async () => {
       try {
-        const res = await axios.get("http://localhost:3000/api/fees/");
+        const res = await axios.get(`${Port}/api/fees/`);
         const data = res.data.data || [];
         setFeeHeadings(data);
         if (data.length > 0) {
@@ -43,7 +56,9 @@ const ConfigureFeesPlan = () => {
   }, []);
 
   const toggleSelect = (item, list, setList) => {
-    setList(list.includes(item) ? list.filter(i => i !== item) : [...list, item]);
+    setList(
+      list.includes(item) ? list.filter((i) => i !== item) : [...list, item]
+    );
   };
 
   const handleDeleteRow = (idx) => {
@@ -65,13 +80,20 @@ const ConfigureFeesPlan = () => {
   };
 
   const handleSubmit = async () => {
-    if (!feesHeading || !feesValue || selectedClasses.length === 0 || selectedCategories.length === 0) {
-      toast.warning("Please fill all fields and select at least one class and category");
+    if (
+      !feesHeading ||
+      !feesValue ||
+      selectedClasses.length === 0 ||
+      selectedCategories.length === 0
+    ) {
+      toast.warning(
+        "Please fill all fields and select at least one class and category"
+      );
       return;
     }
 
     try {
-      const response = await axios.post("http://localhost:3000/api/fees/plan", {
+      const response = await axios.post(`${Port}/api/fees/plan`, {
         feesHeading,
         value: feesValue,
         classes: selectedClasses,
@@ -79,8 +101,8 @@ const ConfigureFeesPlan = () => {
       });
 
       if (response.data.success) {
-        const newRows = selectedClasses.flatMap(cls =>
-          selectedCategories.map(cat => ({
+        const newRows = selectedClasses.flatMap((cls) =>
+          selectedCategories.map((cat) => ({
             className: cls,
             categoryName: cat,
             feesName: feesHeading,
@@ -105,7 +127,9 @@ const ConfigureFeesPlan = () => {
   return (
     <MainLayout>
       <div className="p-4 bg-white">
-        <h2 className="text-2xl font-bold text-cyan-700 mb-4">CONFIGURE FEES PLAN</h2>
+        <h2 className="text-2xl font-bold text-cyan-700 mb-4">
+          CONFIGURE FEES PLAN
+        </h2>
 
         <div className="flex gap-4 mb-4">
           <select
@@ -134,7 +158,9 @@ const ConfigureFeesPlan = () => {
           {/* Class List */}
           <div className="w-1/2">
             <div className="flex justify-between mb-1">
-              <h3 className="text-lg font-semibold text-blue-600">Choose Classes</h3>
+              <h3 className="text-lg font-semibold text-blue-600">
+                Choose Classes
+              </h3>
               <div className="flex gap-2">
                 <input
                   value={newClass}
@@ -142,7 +168,10 @@ const ConfigureFeesPlan = () => {
                   className="border px-2 py-1 text-sm"
                   placeholder="Add Class"
                 />
-                <button onClick={handleAddClass} className="bg-green-500 text-white px-2 rounded">
+                <button
+                  onClick={handleAddClass}
+                  className="bg-green-500 text-white px-2 rounded"
+                >
                   Add
                 </button>
               </div>
@@ -153,7 +182,9 @@ const ConfigureFeesPlan = () => {
                   <input
                     type="checkbox"
                     checked={selectedClasses.includes(cls)}
-                    onChange={() => toggleSelect(cls, selectedClasses, setSelectedClasses)}
+                    onChange={() =>
+                      toggleSelect(cls, selectedClasses, setSelectedClasses)
+                    }
                     className="mr-2"
                   />
                   {cls}
@@ -165,7 +196,9 @@ const ConfigureFeesPlan = () => {
           {/* Category List */}
           <div className="w-1/2">
             <div className="flex justify-between mb-1">
-              <h3 className="text-lg font-semibold text-blue-600">Choose Category</h3>
+              <h3 className="text-lg font-semibold text-blue-600">
+                Choose Category
+              </h3>
               <div className="flex gap-2">
                 <input
                   value={newCategory}
@@ -173,7 +206,10 @@ const ConfigureFeesPlan = () => {
                   className="border px-2 py-1 text-sm"
                   placeholder="Add Category"
                 />
-                <button onClick={handleAddCategory} className="bg-green-500 text-white px-2 rounded">
+                <button
+                  onClick={handleAddCategory}
+                  className="bg-green-500 text-white px-2 rounded"
+                >
                   Add
                 </button>
               </div>
@@ -184,7 +220,13 @@ const ConfigureFeesPlan = () => {
                   <input
                     type="checkbox"
                     checked={selectedCategories.includes(cat)}
-                    onChange={() => toggleSelect(cat, selectedCategories, setSelectedCategories)}
+                    onChange={() =>
+                      toggleSelect(
+                        cat,
+                        selectedCategories,
+                        setSelectedCategories
+                      )
+                    }
                     className="mr-2"
                   />
                   {cat}

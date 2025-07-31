@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Users, IndianRupee, CalendarCheck2 } from "lucide-react";
-
+import Port from "../Components/link.js"
 const Dashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -9,7 +9,7 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        const res = await axios.get("http://localhost:3000/api/dashboard");
+        const res = await axios.get(`${Port}/api/dashboard`);
         if (res.data.success) setData(res.data.data);
       } catch (err) {
         console.error("Error fetching dashboard:", err.message);

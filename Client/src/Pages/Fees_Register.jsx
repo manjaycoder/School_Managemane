@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import moment from "moment";
-
+import Port from "../Components/link.js"
 const FeesRegister = () => {
   const [feesData, setFeesData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
@@ -11,7 +11,7 @@ const FeesRegister = () => {
   // Fetch all fee records
   const fetchData = async () => {
     try {
-      const res = await axios.get("http://localhost:3000/api/fees/record");
+      const res = await axios.get(`${Port}/api/fees/record`);
       if (res.data.success) {
         const sorted = res.data.data.sort(
           (a, b) => new Date(b.created_at) - new Date(a.created_at)

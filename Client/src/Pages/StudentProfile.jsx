@@ -1,18 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import MainLayout from "../layout/MainLayout";
-
+import Port from "../Components/link.js"
 const StudentProfile = () => {
   const { id } = useParams();
   const [student, setStudent] = useState(null);
-  const [collapsed, setCollapsed] = useState(false);
-
-  const toggleSidebar = () => setCollapsed((prev) => !prev);
-
+  
+  
   useEffect(() => {
     const fetchStudent = async () => {
       try {
-        const res = await fetch(`http://localhost:3000/api/students/${id}`);
+        const res = await fetch(`${Port}/api/students/${id}`);
         const data = await res.json();
         setStudent(data);
       } catch (err) {

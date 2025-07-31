@@ -96,7 +96,7 @@ const Register = () => {
     <div className={`min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4 transition-opacity duration-1000 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
       <div className="w-full max-w-4xl flex flex-col md:flex-row rounded-2xl overflow-hidden shadow-2xl bg-white">
         {/* Left side with image */}
-        <div className="hidden md:block md:w-1/2 bg-gradient-to-br  p-8 flex items-center justify-center">
+        <div className=" md:block md:w-1/2 bg-gradient-to-br  p-8 flex items-center justify-center">
           <img 
             src={RegisterA}
             alt="Register" 
@@ -107,7 +107,7 @@ const Register = () => {
         {/* Right side with form */}
         <div className="w-full md:w-1/2 p-8">
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-800 mb-2 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-700">
+            <h1 className="text-4xl font-bold text-gray-800 mb-2 bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-700">
               Create Account
             </h1>
             <p className="text-gray-600">Join us today</p>
