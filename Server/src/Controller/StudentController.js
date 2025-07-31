@@ -60,120 +60,162 @@ export const getStudentByAdmissionNumber = async (req, res) => {
   }
 };
 
-export const addStudent = [
-  upload.fields([
-    { name: "fatherImage", maxCount: 1 },
-    { name: "motherImage", maxCount: 1 },
-    { name: "documents", maxCount: 10 },
-  ]),
-  async (req, res) => {
-    let connection;
-    try {
-      const data = req.body;
-      const files = req.files || {};
+export const addStudent = async (req, res) => {
+  const data = req.body;
+  const file = req.file;
 
-      const requiredFields = {
-        firstName: "First name is required",
-        lastName: "Last name is required",
-        dob: "Date of birth is required",
-        class: "Class is required",
-        section: "Section is required",
-        routeName: "Route name is required", // Added
-        fatherName: "Father's name is required",
-        fatherPhoneNumber: "Father's phone number is required",
-      };
+  const connection = await pool.getConnection();
+  await connection.beginTransaction();
 
-      const missingFields = Object.entries(requiredFields)
-        .filter(([key]) => !data[key])
-        .map(([, msg]) => msg);
+  try {
+    // 1. Check duplicate admission number
+    const [existingStudent] = await connection.query(
+      "SELECT admissionNumber FROM students WHERE admissionNumber = ?",
+      [data.admissionNumber]
+    );
+    if (existingStudent.length > 0) {
+      return res.status(409).json({ message: "Admission number already exists." });
+    }
 
-      if (missingFields.length > 0) {
-        cleanupFiles(files);
-        return res.status(400).json({
-          error: "Validation failed",
-          details: missingFields,
-        });
-      }
+    // 2. Upload photo
+    let photoPath = null;
+    if (file) {
+      const ext = path.extname(file.originalname);
+      const fileName = `${data.admissionNumber}${ext}`;
+      const uploadPath = path.join("uploads", fileName);
+      await fs.writeFile(uploadPath, file.buffer);
+      photoPath = uploadPath;
+    }
 
-      const processFile = (fileArray) =>
-        fileArray && fileArray.length > 0 ? fileArray[0].filename : null;
-
-      const fatherImage = processFile(files.fatherImage);
-      const motherImage = processFile(files.motherImage);
-      const documents = (files.documents || []).map((f) => f.filename);
-
-      connection = await pool.getConnection();
-      await connection.beginTransaction();
-
-      const sql = `INSERT INTO students (
-        admissionNumber, firstName, middleName, lastName, dob, class, section, routeName,
-        email, bloodGroup, gender, height, weight, category, religion, caste,
-        fatherName, fatherPhoneNumber, fatherOccupation, fatherQualification,
-        fatherAdharNo, fatherImage, motherName, motherPhoneNumber,
-        motherOccupation, motherAdharNo, motherImage, documents,
-        admissionDate, rollNo, currentAddress, permanentAddress
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`; 
-
-      const values = [
+    // 3. Insert into students table
+    await connection.query(
+      `INSERT INTO students (
+        admissionNumber, roll_no, firstName, lastName, middleName, dob, gender, category,
+        class, section, mobile, email, address, city, state, pincode, routeName, photo
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
         data.admissionNumber,
+        data.roll_no,
         data.firstName,
-        data.middleName || null,
         data.lastName,
+        data.middleName,
         data.dob,
+        data.gender,
+        data.category,
         data.class,
         data.section,
-        data.routeName, // Added
-        data.email || null,
-        data.bloodGroup || null,
-        data.gender || null,
-        data.height || null,
-        data.weight || null,
-        data.category || null,
-        data.religion || null,
-        data.caste || null,
-        data.fatherName,
-        data.fatherPhoneNumber,
-        data.fatherOccupation || null,
-        data.fatherQualification || null,
-        data.fatherAdharNo || null,
-        fatherImage || null,
-        data.motherName || null,
-        data.motherPhoneNumber || null,
-        data.motherOccupation || null,
-        data.motherAdharNo || null,
-        motherImage || null,
-        documents.length > 0 ? JSON.stringify(documents) : null,
-        data.admissionDate || new Date().toISOString().slice(0, 10),
-        data.rollNo || null,
-        data.currentAddress || null,
-        data.permanentAddress || null,
-      ];
+        data.mobile,
+        data.email,
+        data.address,
+        data.city,
+        data.state,
+        data.pincode,
+        data.routeName,
+        photoPath
+      ]
+    );
 
-      const [result] = await connection.execute(sql, values);
-      await connection.commit();
+    // 4. Get first 12 months
+    const [feeMonths] = await connection.query(
+      "SELECT month FROM months ORDER BY id LIMIT 12"
+    );
 
-      res.status(201).json({
-        success: true,
-        message: "Student added successfully",
-        studentId: result.insertId,
-      });
-    } catch (err) {
-      if (connection) await connection.rollback();
-      cleanupFiles(req.files);
+    // 5. Get Academic Fees
+    const [academicFees] = await connection.query(
+      "SELECT amount FROM fees_plan WHERE class = ? LIMIT 1",
+      [data.class]
+    );
+    const academicFee = academicFees.length > 0 ? academicFees[0].amount : 0;
 
-      if (err.code === "ER_DUP_ENTRY") {
-        return res.status(409).json({ error: "Student already exists" });
-      }
+    // 6. Get Transport Fees
+    const [transportFees] = await connection.query(
+      "SELECT amount FROM route_plans WHERE routeName = ? LIMIT 1",
+      [data.routeName]
+    );
+    const transportFee = transportFees.length > 0 ? transportFees[0].amount : 0;
 
-      res.status(500).json({
-        error: "Database operation failed",
-        ...(process.env.NODE_ENV === "development" && { details: err.message }),
-      });
-    } finally {
-      if (connection) connection.release();
-    }
-  },
-];
+    // 7. Prepare fees_register insert data
+    const now = new Date();
+    const studentName = `${data.firstName} ${data.middleName} ${data.lastName}`.trim();
+    const commonValues = {
+      admissionNumber: data.admissionNumber,
+      roll_no: data.roll_no || "",
+      student_name: studentName,
+      class: data.class,
+      category: data.category,
+      route: data.routeName,
+      date: now.toISOString().split("T")[0],
+    };
+
+    const feesEntries = feeMonths.flatMap(({ month }) => [
+      [
+        commonValues.date,
+        null, // rec_no
+        commonValues.admissionNumber,
+        commonValues.roll_no,
+        commonValues.student_name,
+        commonValues.class,
+        commonValues.category,
+        commonValues.route,
+        month,
+        academicFee,
+        0, // late_fee
+        0, // ledger_amt
+        0, // discount
+        academicFee,
+        0, // recd_amt
+        academicFee, // balance
+      ],
+      [
+        commonValues.date,
+        null,
+        commonValues.admissionNumber,
+        commonValues.roll_no,
+        commonValues.student_name,
+        commonValues.class,
+        commonValues.category,
+        commonValues.route,
+        month,
+        transportFee,
+        0,
+        0,
+        0,
+        transportFee,
+        0,
+        transportFee,
+      ]
+    ]);
+
+    await connection.query(
+      `INSERT INTO fees_register (
+        date, rec_no, admissionNumber, roll_no, student_name, class, category, route,
+        months, fees, late_fee, ledger_amt, discount, total, recd_amt, balance
+      ) VALUES ?`,
+      [feesEntries]
+    );
+
+    // 8. Insert into student_months table
+    const monthsInsert = feeMonths.map(({ month }) => [
+      data.admissionNumber,
+      month
+    ]);
+    await connection.query(
+      "INSERT INTO student_months (admissionNumber, month) VALUES ?",
+      [monthsInsert]
+    );
+
+    // 9. Commit
+    await connection.commit();
+    res.status(200).json({ success: true, message: "Student and fees added successfully." });
+  } catch (error) {
+    await connection.rollback();
+    console.error("Insert error:", error);
+    res.status(500).json({ success: false, message: "Failed to add student with fees." });
+  } finally {
+    connection.release();
+  }
+};
+
 
 
 export const getStudents = async (req, res) => {
