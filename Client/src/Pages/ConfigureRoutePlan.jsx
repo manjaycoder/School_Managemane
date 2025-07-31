@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import MainLayout from "../layout/MainLayout";
-
+import Port from "../Components/link.js"
 const ConfigureRoutePlan = () => {
   const [classList, setClassList] = useState([
     "Nursery",
@@ -37,7 +37,7 @@ const ConfigureRoutePlan = () => {
   /** Fetch Routes and Plans */
   useEffect(() => {
     axios
-      .get("http://localhost:3000/routes/")
+      .get(`${Port}/routes/`)
       .then((res) => setRouteOptions(res.data.map((r) => r.route_name)))
       .catch((err) => console.error("Error fetching routes:", err));
 
@@ -46,7 +46,7 @@ const ConfigureRoutePlan = () => {
 
   const fetchRoutePlans = () => {
     axios
-      .get("http://localhost:3000/applyRouter/api/route-plans")
+      .get(`${Port}/applyRouter/api/route-plans`)
       .then((res) => setRoutesTable(res.data))
       .catch((err) => console.error("Error fetching route plans:", err));
   };
@@ -103,14 +103,14 @@ const ConfigureRoutePlan = () => {
         if (editId) {
           requests.push(
             axios.put(
-              `http://localhost:3000/applyRouter/api/route-plans/${editId}`,
+              `${Port}/applyRouter/api/route-plans/${editId}`,
               newRoute
             )
           );
         } else {
           requests.push(
             axios.post(
-              "http://localhost:3000/applyRouter/api/route-plans",
+              `${Port}/applyRouter/api/route-plans`,
               newRoute
             )
           );
@@ -148,7 +148,7 @@ const ConfigureRoutePlan = () => {
   const handleDelete = (id) => {
     if (window.confirm("Are you sure you want to delete this route plan?")) {
       axios
-        .delete(`http://localhost:3000/applyRouter/api/route-plans/${id}`)
+        .delete(`${Port}/applyRouter/api/route-plans/${id}`)
         .then(() => fetchRoutePlans())
         .catch((err) => console.error("Error deleting route plan:", err));
     }

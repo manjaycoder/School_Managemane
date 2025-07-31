@@ -4,7 +4,7 @@ import { FiTrash2 } from "react-icons/fi";
 import MainLayout from "../layout/MainLayout";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
+import Port from "../Components/link.js";
 const ConfigureFeesPlan = () => {
   const [feeHeadings, setFeeHeadings] = useState([]);
   const [feesHeading, setFeesHeading] = useState("");
@@ -16,18 +16,33 @@ const ConfigureFeesPlan = () => {
   const [newCategory, setNewCategory] = useState("");
 
   const [classList, setClassList] = useState([
-    "12th", "11th", "10th", "9th", "8th", "7th", "6th", "5th",
-    "4th", "3rd", "2nd", "1st", "L.K.G", "U.K.G", "Nursery"
+    "12th",
+    "11th",
+    "10th",
+    "9th",
+    "8th",
+    "7th",
+    "6th",
+    "5th",
+    "4th",
+    "3rd",
+    "2nd",
+    "1st",
+    "L.K.G",
+    "U.K.G",
+    "Nursery",
   ]);
 
   const [categoryList, setCategoryList] = useState([
-    "General", "New Student", "Old Student"
+    "General",
+    "New Student",
+    "Old Student",
   ]);
 
   useEffect(() => {
     const fetchFeeHeadings = async () => {
       try {
-        const res = await axios.get("http://localhost:3000/api/fees");
+        const res = await axios.get(`${Port}/api/fees`);
         setFeeHeadings(res.data.data || []);
         setFeesHeading(res.data.data?.[0] || "");
       } catch (err) {
@@ -39,9 +54,7 @@ const ConfigureFeesPlan = () => {
 
   const toggleSelection = (item, list, setList) => {
     setList(
-      list.includes(item)
-        ? list.filter((i) => i !== item)
-        : [...list, item]
+      list.includes(item) ? list.filter((i) => i !== item) : [...list, item]
     );
   };
 
@@ -69,13 +82,15 @@ const ConfigureFeesPlan = () => {
   const deleteCategory = (category) => {
     if (window.confirm(`Are you sure you want to delete "${category}"?`)) {
       setCategoryList(categoryList.filter((cat) => cat !== category));
-      setSelectedCategories(selectedCategories.filter((cat) => cat !== category));
+      setSelectedCategories(
+        selectedCategories.filter((cat) => cat !== category)
+      );
     }
   };
 
   const handleUpdate = async () => {
     try {
-      const response = await axios.post("http://localhost:3000/api/fees/plan", {
+      const response = await axios.post(`${Port}/api/fees/plan`, {
         feesHeading,
         value: feesValue,
         classes: selectedClasses,
@@ -95,16 +110,14 @@ const ConfigureFeesPlan = () => {
           }
         }
         setTableData((prev) => [...prev, ...newRows]);
-        
+
         toast.success("✅ Fee plan saved successfully");
       } else {
-        
         toast.error("❌ Failed to save fee plan");
       }
     } catch (error) {
       console.error("API Error:", error);
       toast.error("❌ Server error while saving fee plan");
-      
     }
   };
 
@@ -113,7 +126,9 @@ const ConfigureFeesPlan = () => {
       <MainLayout>
         <ToastContainer position="top-right" autoClose={3000} />
         <main className="p-6 w-full">
-          <h2 className="text-2xl font-bold mb-4 text-cyan-700">Configure Fees Plan</h2>
+          <h2 className="text-2xl font-bold mb-4 text-cyan-700">
+            Configure Fees Plan
+          </h2>
 
           <div className="flex gap-4 mb-4">
             <select
@@ -122,7 +137,9 @@ const ConfigureFeesPlan = () => {
               className="border p-2 w-1/2"
             >
               {feeHeadings.map((fee, idx) => (
-                <option key={idx} value={fee}>{fee}</option>
+                <option key={idx} value={fee}>
+                  {fee}
+                </option>
               ))}
             </select>
 
@@ -137,7 +154,9 @@ const ConfigureFeesPlan = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             {/* Class Section */}
             <div className="bg-white border rounded p-4">
-              <h3 className="font-semibold text-blue-600 mb-2">Choose Classes</h3>
+              <h3 className="font-semibold text-blue-600 mb-2">
+                Choose Classes
+              </h3>
               <div className="flex gap-2 mb-2">
                 <input
                   type="text"
@@ -160,7 +179,13 @@ const ConfigureFeesPlan = () => {
                       <input
                         type="checkbox"
                         checked={selectedClasses.includes(cls)}
-                        onChange={() => toggleSelection(cls, selectedClasses, setSelectedClasses)}
+                        onChange={() =>
+                          toggleSelection(
+                            cls,
+                            selectedClasses,
+                            setSelectedClasses
+                          )
+                        }
                         className="mr-2"
                       />
                       {cls}
@@ -178,7 +203,9 @@ const ConfigureFeesPlan = () => {
 
             {/* Category Section */}
             <div className="bg-white border rounded p-4">
-              <h3 className="font-semibold text-blue-600 mb-2">Choose Categories</h3>
+              <h3 className="font-semibold text-blue-600 mb-2">
+                Choose Categories
+              </h3>
               <div className="flex gap-2 mb-2">
                 <input
                   type="text"
@@ -201,7 +228,13 @@ const ConfigureFeesPlan = () => {
                       <input
                         type="checkbox"
                         checked={selectedCategories.includes(cat)}
-                        onChange={() => toggleSelection(cat, selectedCategories, setSelectedCategories)}
+                        onChange={() =>
+                          toggleSelection(
+                            cat,
+                            selectedCategories,
+                            setSelectedCategories
+                          )
+                        }
                         className="mr-2"
                       />
                       {cat}

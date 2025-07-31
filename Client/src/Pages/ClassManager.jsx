@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import MainLayout from "../layout/MainLayout";
-
+import Port from "../Components/link.js"
 const ClassManager = () => {
   const availableSections = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
   const [className, setClassName] = useState("");
@@ -22,7 +22,7 @@ const ClassManager = () => {
     }
 
     try {
-      const response = await fetch("http://localhost:3000/api/classes/", {
+      const response = await fetch(`${Port}/api/classes/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

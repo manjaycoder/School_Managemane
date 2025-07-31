@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import MainLayout from "../layout/MainLayout";
-
+import Port from "../Components/link.js"
 const CreateAccount = () => {
   
   const [form, setForm] = useState({
@@ -35,7 +35,7 @@ const CreateAccount = () => {
 
   const handleSave = async () => {
   try {
-     const response = await fetch("http://localhost:3000/api/accounts", {
+     const response = await fetch(`${Port}/api/accounts`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MainLayout from "../layout/MainLayout";
-
+import Port from "../Components/link.js";
 const StudentSearchPage = () => {
   const [classes, setClasses] = useState([]);
   const [sections, setSections] = useState([]);
@@ -17,9 +17,7 @@ const StudentSearchPage = () => {
   useEffect(() => {
     const fetchClassSectionData = async () => {
       try {
-        const response = await fetch(
-          "http://localhost:3000/api/classes/with-sections"
-        );
+        const response = await fetch(`${Port}/api/classes/with-sections`);
         const data = await response.json();
         setClasses(data);
       } catch (error) {
@@ -41,7 +39,7 @@ const StudentSearchPage = () => {
   // Search students
   const handleSearch = async () => {
     try {
-      const res = await fetch(`http://localhost:3000/api/students/`);
+      const res = await fetch(`${Port}/api/students/`);
       const data = await res.json();
       setStudents(data);
     } catch (error) {
@@ -169,10 +167,7 @@ const StudentSearchPage = () => {
                 ))
               ) : (
                 <tr>
-                  <td
-                    colSpan="10"
-                    className="text-center py-8 text-gray-500"
-                  >
+                  <td colSpan="10" className="text-center py-8 text-gray-500">
                     No students found.
                   </td>
                 </tr>

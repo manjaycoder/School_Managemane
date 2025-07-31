@@ -3,7 +3,7 @@ import axios from "axios";
 import MainLayout from "../layout/MainLayout";
 
 const monthsList = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const API = "http://localhost:3000/routes";
+const API = "https://school-management-1rb1.onrender.com/routes";
 
 const CreateRoutes = () => {
   const [routeName, setRouteName] = useState("");

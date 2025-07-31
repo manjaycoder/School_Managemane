@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-
+import Port from "../Components/link.js"
 const FeesRecordTable = () => {
   const [records, setRecords] = useState([]);
   const [filteredRecords, setFilteredRecords] = useState([]);
@@ -18,7 +18,7 @@ const FeesRecordTable = () => {
   // Fetch all records on mount
   useEffect(() => {
     axios
-      .get("http://localhost:3000/api/fees/record")
+      .get(`${Port}/api/fees/record`)
       .then((res) => {
         setRecords(res.data);
         setFilteredRecords(res.data);
