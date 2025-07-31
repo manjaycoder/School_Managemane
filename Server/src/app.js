@@ -4,6 +4,7 @@ import path from "path";
 import fs from "fs";
 import dashboardRoutes from "./Routes/TotalAmount.js";
 import dotenv from "dotenv";
+dotenv.config();
 import RoutesFeesApply from "../src/Routes/RoutesFeesApply.js";
 import { fileURLToPath } from "url";
 import TransferRoutes from "./Routes/TransferRoutes.js";
@@ -12,12 +13,12 @@ import classRoutes from "./Routes/classRoutes.js";
 import feesRoutes from "./Routes/feesRoutes.js";
 import "./Config/db.js";
 import CreateAccount from "./Routes/accountRoutes.js";
-dotenv.config();
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
-const port = process.env.PORT || 3000;
+const port = 4000
 
 app.use(express.json());
 app.use(cors());
