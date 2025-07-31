@@ -1,222 +1,281 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import { useReactToPrint } from "react-to-print";
+import MainLayout from "../layout/MainLayout";
 
-const FeesRegister = () => {
-  const [data, setData] = useState([]);
+const FeesReceipt = () => {
+  const [admissionNo, setAdmissionNo] = useState("");
+  const [receiptNo, setReceiptNo] = useState("");
+  const [date, setDate] = useState("");
+  const [studentData, setStudentData] = useState(null);
+  const [pendingFees, setPendingFees] = useState([]);
+  const [remainingMonths, setRemainingMonths] = useState([]);
+  const [paidMonths, setPaidMonths] = useState([]);
+  const [appliedFeeData, setAppliedFeeData] = useState(null);
+  const [selectedMonths, setSelectedMonths] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [fromDate, setFromDate] = useState("2024-04-01");
-  const [toDate, setToDate] = useState("2024-04-02");
-  const [userWise, setUserWise] = useState(true);
+  const [applyingMonths, setApplyingMonths] = useState(false);
 
+  const receiptRef = useRef();
+
+  /** Initialize date and receipt number */
   useEffect(() => {
-    fetchData();
-  }, [fromDate, toDate, userWise]);
+    const today = new Date();
+    setDate(today.toISOString().split("T")[0]);
+    setReceiptNo(`RCPT-${Date.now().toString().slice(-6)}`);
+  }, []);
 
-  const fetchData = async () => {
-    setLoading(true);
-    setError(null);
+  /** Fetch student details when admission number changes */
+  useEffect(() => {
+    if (!admissionNo.trim()) {
+      setStudentData(null);
+      setPendingFees([]);
+      setRemainingMonths([]);
+      setPaidMonths([]);
+      return;
+    }
+
+    const fetchStudentData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const { data } = await axios.get(
+          `http://localhost:3000/api/students/student/${admissionNo}`
+        );
+
+        if (data.student) {
+          setStudentData(data.student);
+          await fetchPendingFees(admissionNo);
+        } else {
+          setError("No student data found.");
+          setStudentData(null);
+        }
+      } catch (err) {
+        setError(err.response?.data?.message || "Failed to fetch student data.");
+        setStudentData(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const timer = setTimeout(fetchStudentData, 500);
+    return () => clearTimeout(timer);
+  }, [admissionNo]);
+
+  /** Fetch pending fees */
+  const fetchPendingFees = async (admissionNo) => {
     try {
-      const res = await axios.get("http://localhost:3000/api/fees/apply", {
-        params: { fromDate, toDate, userWise }
-      });
-      setData(res.data);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      setError("Failed to fetch data. Please try again.");
-    } finally {
-      setLoading(false);
+      const { data } = await axios.get(
+        `http://localhost:3000/api/fees/pending?admissionNo=${admissionNo}`
+      );
+      if (data.success) {
+        setPendingFees(data.pendingFees || []);
+        setRemainingMonths(data.remainingMonths || []);
+        setPaidMonths(data.paidMonths || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch pending fees:", err.message);
     }
   };
 
-  const calculateTotals = (field) => {
-    return data.reduce((acc, item) => acc + (parseFloat(item[field]) || 0), 0);
+  /** Handle month selection */
+  const toggleMonth = (month) => {
+    setSelectedMonths((prev) =>
+      prev.includes(month) ? prev.filter((m) => m !== month) : [...prev, month]
+    );
   };
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(value);
+  /** Apply fees for selected months */
+  const handleApplyMonths = async () => {
+    if (!studentData || selectedMonths.length === 0) {
+      setError("Please select at least one month to apply fees.");
+      return;
+    }
+
+    setApplyingMonths(true);
+    setError(null);
+
+    try {
+      const { data } = await axios.post("http://localhost:3000/api/fees/apply", {
+        admissionNo,
+        className: studentData.className || studentData.class || "",
+        category: studentData.category || "",
+        selectedMonths,
+      });
+
+      if (data.success) {
+        setAppliedFeeData(data.data);
+
+        // Generate new receipt number for next transaction
+        setReceiptNo(`RCPT-${Date.now().toString().slice(-6)}`);
+
+        // Refresh pending fees
+        setSelectedMonths([]);
+        await fetchPendingFees(admissionNo);
+      }
+    } catch (err) {
+      console.error("Error applying fees:", err);
+      setError(err.response?.data?.message || "Failed to apply fees.");
+    } finally {
+      setApplyingMonths(false);
+    }
   };
 
-  const totals = {
-    fees: calculateTotals("fees"),
-    lateFee: calculateTotals("lateFee"),
-    ledgerAmt: calculateTotals("ledgerAmt"),
-    discount: calculateTotals("discount"),
-    total: calculateTotals("total"),
-    recdAmt: calculateTotals("recdAmt"),
-    balance: calculateTotals("balance")
+  /** Print Receipt */
+  const handlePrint = useReactToPrint({
+    content: () => receiptRef.current,
+    documentTitle: `Receipt_${admissionNo}_${receiptNo}`,
+  });
+
+  /** Reset all states */
+  const handleClose = () => {
+    setAdmissionNo("");
+    setStudentData(null);
+    setSelectedMonths([]);
+    setAppliedFeeData(null);
+    setPendingFees([]);
+    setRemainingMonths([]);
+    setPaidMonths([]);
+    setError(null);
+    setReceiptNo(`RCPT-${Date.now().toString().slice(-6)}`);
   };
 
   return (
-    <div className="p-4 bg-gray-50 min-h-screen">
-      <div className="max-w-7xl mx-auto bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">Fees Register</h2>
-        
-        {/* Filters Section */}
-        <div className="bg-gray-100 p-4 rounded-lg mb-6">
-          <div className="flex flex-wrap gap-4 items-center">
-            <div className="flex items-center gap-2">
-              <label className="text-gray-700 font-medium">From</label>
-              <input
-                type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-                className="border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <label className="text-gray-700 font-medium">To</label>
-              <input
-                type="date"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-                className="border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            
+    <MainLayout>
+    <div className=" bg-gray-50 min-h-screen">
+      <div className="bg-white rounded-lg shadow-md p-6 max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b pb-4 gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-blue-800">FEES RECEIPT</h2>
+            <p className="text-sm text-gray-500">Student Fee Payment Record</p>
+          </div>
+          <div className="flex flex-wrap gap-2 w-full md:w-auto">
+            <input
+              type="text"
+              value={admissionNo}
+              onChange={(e) => setAdmissionNo(e.target.value)}
+              placeholder="Admission No"
+              className="border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <input
+              type="text"
+              value={receiptNo}
+              readOnly
+              className="border rounded px-3 py-2 w-32 text-sm bg-gray-100"
+            />
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
             <button
-              onClick={fetchData}
-              disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors flex items-center gap-2"
+              onClick={handlePrint}
+              disabled={!appliedFeeData}
+              className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 disabled:bg-gray-400"
             >
-              {loading ? (
-                <>
-                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Loading...
-                </>
-              ) : 'Apply'}
+              Print
             </button>
-            
-            <div className="flex items-center gap-2 ml-auto">
-              <label className="flex items-center gap-2 text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={userWise}
-                  onChange={() => setUserWise(!userWise)}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                User Wise
-              </label>
-            </div>
+            <button
+              onClick={handleClose}
+              className="bg-gray-200 px-4 py-2 rounded text-sm hover:bg-gray-300"
+            >
+              Reset
+            </button>
           </div>
         </div>
 
-        {/* Error Message */}
+        {/* Loader and Error */}
+        {loading && <p className="mt-4 text-blue-500">Loading...</p>}
         {error && (
-          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded">
-            <p>{error}</p>
+          <div className="mt-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded">
+            {error}
           </div>
         )}
 
-        {/* Data Table */}
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Select</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Receipt No</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Adm No</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roll No</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Route</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Month</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Fees</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Late Fee</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ledger Amt</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Discount</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Recd Amt</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {data.length > 0 ? (
-                data.map((item, index) => (
-                  <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <input 
-                        type="checkbox" 
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.date}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.recNo}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.admNo}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.rollNo}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.student}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.class}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.category}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.route}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.month}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">{formatCurrency(item.fees)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">{formatCurrency(item.lateFee)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">{formatCurrency(item.ledgerAmt)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">{formatCurrency(item.discount)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">{formatCurrency(item.total)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">{formatCurrency(item.recdAmt)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">{formatCurrency(item.balance)}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="17" className="px-6 py-4 text-center text-sm text-gray-500">
-                    {loading ? 'Loading data...' : 'No records found for the selected criteria'}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Summary Section */}
-        <div className="mt-6 bg-blue-50 p-4 rounded-lg">
-          <h3 className="text-lg font-semibold text-gray-800 mb-3">Summary</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-            <div className="bg-white p-3 rounded shadow-sm">
-              <p className="text-xs text-gray-500">Total Fees</p>
-              <p className="text-lg font-semibold text-blue-600">{formatCurrency(totals.fees)}</p>
-            </div>
-            <div className="bg-white p-3 rounded shadow-sm">
-              <p className="text-xs text-gray-500">Late Fees</p>
-              <p className="text-lg font-semibold text-blue-600">{formatCurrency(totals.lateFee)}</p>
-            </div>
-            <div className="bg-white p-3 rounded shadow-sm">
-              <p className="text-xs text-gray-500">Ledger Amt</p>
-              <p className="text-lg font-semibold text-blue-600">{formatCurrency(totals.ledgerAmt)}</p>
-            </div>
-            <div className="bg-white p-3 rounded shadow-sm">
-              <p className="text-xs text-gray-500">Discount</p>
-              <p className="text-lg font-semibold text-red-600">{formatCurrency(totals.discount)}</p>
-            </div>
-            <div className="bg-white p-3 rounded shadow-sm">
-              <p className="text-xs text-gray-500">Net Amount</p>
-              <p className="text-lg font-semibold text-green-600">{formatCurrency(totals.total)}</p>
-            </div>
-            <div className="bg-white p-3 rounded shadow-sm">
-              <p className="text-xs text-gray-500">Received Amt</p>
-              <p className="text-lg font-semibold text-green-600">{formatCurrency(totals.recdAmt)}</p>
-            </div>
-            <div className="bg-white p-3 rounded shadow-sm">
-              <p className="text-xs text-gray-500">Balance Amt</p>
-              <p className="text-lg font-semibold text-red-600">{formatCurrency(totals.balance)}</p>
+        {/* Student Info */}
+        {studentData && (
+          <div className="mt-6 bg-gray-100 p-4 rounded-lg border">
+            <h3 className="font-semibold text-lg mb-2">Student Details</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <p>
+                <strong>Name:</strong> {studentData.firstName} {studentData.lastName}
+              </p>
+              <p>
+                <strong>Class:</strong> {studentData.className || studentData.class}
+              </p>
+              <p>
+                <strong>Category:</strong> {studentData.category}
+              </p>
+              <p>
+                <strong>Route:</strong> {studentData.routeName || "Not Applied"}
+              </p>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* Pending Fees */}
+        {pendingFees.length > 0 && (
+          <div className="mt-6 bg-yellow-50 p-4 border border-yellow-200 rounded">
+            <h4 className="text-lg font-semibold text-yellow-800 mb-3">Pending Fees</h4>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2">Fee Type</th>
+                    <th className="text-right py-2">Monthly Fees</th>
+                    <th className="text-right py-2">Pending</th>
+                    <th className="text-right py-2">Balance</th>
+                    <th className="text-left py-2">Pending Months</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingFees.map((fee, idx) => (
+                    <tr key={idx} className="border-b">
+                      <td className="py-2">{fee.feesHeading}</td>
+                      <td className="text-right py-2">₹{fee.total}</td>
+                      <td className="text-right py-2">₹{fee.paid}</td>
+                      <td className="text-right py-2">₹{fee.balance}</td>
+                      <td className="py-2">{fee.months}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Month Selection */}
+        {studentData && remainingMonths.length > 0 && (
+          <div className="mt-6 bg-blue-50 p-4 border border-blue-200 rounded">
+            <h3 className="font-semibold text-blue-800 mb-3">Select Months to Apply Fees</h3>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-4">
+              {remainingMonths.map((month) => (
+                <label key={month} className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedMonths.includes(month)}
+                    onChange={() => toggleMonth(month)}
+                  />
+                  <span>{month}</span>
+                </label>
+              ))}
+            </div>
+            <button
+              onClick={handleApplyMonths}
+              disabled={applyingMonths || selectedMonths.length === 0}
+              className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
+            >
+              {applyingMonths ? "Applying..." : `Apply Fees`}
+            </button>
+          </div>
+        )}
       </div>
     </div>
+    </MainLayout>
   );
 };
 
-export default FeesRegister;
+export default FeesReceipt;

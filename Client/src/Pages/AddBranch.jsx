@@ -19,7 +19,7 @@ const AddBranch = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    navigate("/confirm-branch", { state: formData });
+    navigate("/public", { state: formData });
   };
 
   return (

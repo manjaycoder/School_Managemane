@@ -2,34 +2,102 @@ import pool from "../Config/db.js";
 export const addFeesHeading = async (req, res) => {
   const { feesHeading, groupName, frequency, accountName, months } = req.body;
 
-  if (!feesHeading || !groupName || !frequency || !accountName || !Array.isArray(months)) {
+  if (!feesHeading || !groupName || !frequency || !accountName || !months) {
     return res.status(400).json({ success: false, error: "Invalid or missing fields" });
   }
 
   try {
-    const sql = `
-      INSERT INTO fees_headings (feesHeading, groupName, frequency, accountName, months)
-      VALUES (?, ?, ?, ?, ?)
-    `;
-
-    const values = [feesHeading, groupName, frequency, accountName, months.join(",")];
-
-    const [result] = await pool.query(sql, values);
-
-    res.status(200).json({ success: true, id: result.insertId });
+    const [result] = await pool.query(
+      `INSERT INTO fees_headings (feesHeading, groupName, frequency, accountName, months)
+       VALUES (?, ?, ?, ?, ?)`,
+      [feesHeading, groupName, frequency, accountName, months]
+    );
+    res.json({ success: true, message: "Fees heading saved", insertedId: result.insertId });
   } catch (err) {
-    console.error("❌ MySQL Insert Error:", err.message);
+    console.error("Insert error:", err);
+    res.status(500).json({ success: false, error: "Failed to save data" });
+  }
+
+  
+};
+
+
+
+
+export const updateFeesHeading = async (req, res) => {
+  const id = req.params.id;
+  const { feesHeading, groupName, frequency, accountName, months } = req.body;
+  try {
+    const sql = `UPDATE fees_headings SET fees_heading=?, groupName=?, frequency=?, accountName=?, months=? WHERE id=?`;
+    const values = [feesHeading, groupName, frequency, accountName, months.join(","), id];
+    const [result] = await pool.query(sql, values);
+    res.status(200).json({ success: true });
+  } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 };
 
+export const deleteFeesHeading = async (req, res) => {
+  const id = req.params.id;
+  try {
+    const sql = `DELETE FROM fees_headings WHERE id = ?`;
+    await pool.query(sql, [id]);
+    res.status(200).json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+export const getAllFeesPlans = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT id, feesHeading, value, className, category
+      FROM fees_plan
+      ORDER BY id DESC
+    `);
+
+    res.status(200).json({
+      success: true,
+      data: rows,
+    });
+  } catch (err) {
+    console.error("Error fetching fee plans:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch fee plans",
+      error: err.message,
+    });
+  }
+};
+export const getAllFeesHeadings = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`SELECT DISTINCT feesHeading FROM fees_headings`);
+    
+    // Corrected the property name from row.fees_heading to row.feesHeading
+    const headings = rows.map((row) => row.feesHeading);
+
+    res.status(200).json({ success: true, data: headings });
+  } catch (err) {
+    console.error("Error fetching fees headings:", err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+
+
 export const applyFees = async (req, res) => {
   const { admissionNo, className, category, selectedMonths } = req.body;
 
-  if (!admissionNo || !className || !category || !Array.isArray(selectedMonths)) {
+  if (
+    !admissionNo ||
+    !className ||
+    !category ||
+    !Array.isArray(selectedMonths) ||
+    selectedMonths.length === 0
+  ) {
     return res.status(400).json({
       success: false,
-      message: "Missing or invalid admissionNo, className, category, or selectedMonths",
+      message:
+        "Missing or invalid admissionNo, className, category, or selectedMonths",
     });
   }
 
@@ -37,98 +105,167 @@ export const applyFees = async (req, res) => {
   try {
     connection = await pool.getConnection();
 
-    // 1. Validate class existence
-    const [classRows] = await connection.query(
-      "SELECT * FROM class WHERE name = ?",
-      [className]
+    // STEP 1: Get Student Info
+    const [[student]] = await connection.query(
+      "SELECT * FROM students WHERE admissionNumber = ?",
+      [admissionNo]
     );
-    if (classRows.length === 0) {
-      return res.status(404).json({ success: false, message: "Class not found" });
+    if (!student) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Student not found" });
     }
 
-    // 2. Fetch all relevant fee plans
+    const studentRoute = student.routeName || student.route || null;
+    const feeBreakdown = [];
+
+    // STEP 2: Check if Fees Already Applied for Selected Months
+    const placeholders = selectedMonths.map(() => "?").join(",");
+    const [alreadyApplied] = await connection.query(
+      `SELECT DISTINCT months 
+       FROM fees_register 
+       WHERE admissionNumber = ? 
+         AND months IN (${placeholders})`,
+      [admissionNo, ...selectedMonths]
+    );
+
+    const appliedMonths = alreadyApplied.map((r) => r.months);
+    const monthsToApply = selectedMonths.filter(
+      (m) => !appliedMonths.includes(m)
+    );
+
+    if (monthsToApply.length === 0) {
+      return res.status(409).json({
+        success: false,
+        message: "Fees for the selected months have already been applied",
+        alreadyApplied: appliedMonths,
+      });
+    }
+
+    // STEP 3: Academic Fees
     const [feePlans] = await connection.query(
       "SELECT * FROM fees_plan WHERE className = ? AND category = ?",
       [className, category]
     );
+
     if (feePlans.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "No fee plan found for class and category"
+        message: "No fee plan found for class and category",
       });
     }
 
-    const feeBreakdown = [];
-    const allMonthsSet = new Set();
-
     for (const plan of feePlans) {
-      // 3. Get fees heading associated with the plan
-      const [headingRows] = await connection.query(
-        "SELECT * FROM fees_headings WHERE feesHeading = ?",
-        [plan.feesHeading]
-      );
-
-      if (headingRows.length > 0) {
-        const heading = headingRows[0];
-
-        // Gather all months for unselected calculation later
-        const originalMonths = heading.months?.split(',').map(m => m.trim()) || [];
-        originalMonths.forEach(m => allMonthsSet.add(m));
-
-        // Compute unselected months
-        const unselectedMonths = originalMonths.filter(
-          (month) => !selectedMonths.includes(month)
-        );
-
-        // 4. Update fees_headings with unselected months
-        await connection.query(
-          "UPDATE fees_headings SET months = ? WHERE id = ?",
-          [unselectedMonths.join(','), heading.id]
-        );
-      }
-
-      // 5. Create fee breakdown for selected months
-      for (const month of selectedMonths) {
-        const originalAmount = Number(plan.value);
+      for (const month of monthsToApply) {
         feeBreakdown.push({
           feesHeading: plan.feesHeading,
           month,
-          originalAmount,
-          finalAmount: originalAmount,
+          originalAmount: Number(plan.value),
+          finalAmount: Number(plan.value),
         });
       }
     }
 
-    // 6. Calculate unselected months across all fee headings
-    const allOriginalMonths = Array.from(allMonthsSet);
-    const unselectedMonthsForStudent = allOriginalMonths.filter(
-      (month) => !selectedMonths.includes(month)
-    );
+    // STEP 4: Route Fee
+    let transportFeePerMonth = 0;
+    if (studentRoute) {
+      const [routePlanData] = await connection.query(
+        "SELECT price FROM route_plans WHERE class_name = ? AND category_name = ? AND route_name = ?",
+        [className, category, studentRoute]
+      );
 
-    // 7. Update student record with unselected months
-    await connection.query(
-      "UPDATE students SET months = ? WHERE admissionNumber = ?",
-      [unselectedMonthsForStudent.join(','), admissionNo]
-    );
+      const [routeMonthsData] = await connection.query(
+        "SELECT months FROM routes WHERE route_name = ?",
+        [studentRoute]
+      );
 
-    // 8. Calculate totals
-    const totalOriginal = feeBreakdown.reduce((sum, item) => sum + item.originalAmount, 0);
-    const totalFinal = feeBreakdown.reduce((sum, item) => sum + item.finalAmount, 0);
+      if (routePlanData.length > 0 && routeMonthsData.length > 0) {
+        transportFeePerMonth = Number(routePlanData[0].price || 0);
+
+        const routeAvailableMonths = routeMonthsData[0].months
+          ? routeMonthsData[0].months.split(",").map((m) => m.trim())
+          : [];
+
+        const applicableRouteMonths = monthsToApply.filter((month) =>
+          routeAvailableMonths.some(
+            (rm) => rm.toLowerCase() === month.toLowerCase()
+          )
+        );
+
+        for (const month of applicableRouteMonths) {
+          feeBreakdown.push({
+            feesHeading: "Transport Fee",
+            month,
+            originalAmount: transportFeePerMonth,
+            finalAmount: transportFeePerMonth,
+          });
+        }
+      }
+    }
+
+    // STEP 5: Insert into fees_register (Only for monthsToApply)
+    for (const month of monthsToApply) {
+      const monthBreakdown = feeBreakdown.filter((item) => item.month === month);
+      const totalForMonth = monthBreakdown.reduce((sum, item) => sum + item.finalAmount, 0);
+      const feeHeadings = monthBreakdown.map((item) => item.feesHeading).join(", ");
+
+      await connection.query(
+        `INSERT INTO fees_register 
+        (date, rec_no, admissionNumber, roll_no, student_name, class, category, route, months, fees, late_fee, ledger_amt, discount, total, recd_amt, balance, feesHeading)
+         VALUES (CURDATE(), ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, 0, ?, ? )`,
+        [
+          `REC-${Date.now()}`,   // Generate unique receipt number
+          admissionNo,
+          student.roll_no || null,
+          `${student.firstName} ${student.lastName}`.trim(),
+          className,
+          category,
+          studentRoute,
+          month,
+          totalForMonth,         // fees
+          totalForMonth,         // ledger_amt
+          0,                     // discount
+          totalForMonth,         // total
+          totalForMonth,         // balance
+          feeHeadings
+        ]
+      );
+    }
+
+    // STEP 6: DELETE Applied Months from student_months
+    if (monthsToApply.length > 0) {
+      const delPlaceholders = monthsToApply.map(() => "?").join(",");
+      await connection.query(
+        `DELETE FROM student_months 
+         WHERE admissionNo = ? 
+           AND month IN (${delPlaceholders})`,
+        [admissionNo, ...monthsToApply]
+      );
+    }
+
+    // STEP 7: Totals
+    const totalOriginal = feeBreakdown.reduce(
+      (sum, item) => sum + item.originalAmount,
+      0
+    );
+    const totalFinal = feeBreakdown.reduce(
+      (sum, item) => sum + item.finalAmount,
+      0
+    );
 
     res.status(200).json({
       success: true,
-      message: "Fees applied and unselected months updated successfully",
+      message: "Fees applied successfully for pending months",
       data: {
         admissionNo,
-        className,
-        category,
-        appliedMonths: selectedMonths,
-        unselectedMonths: unselectedMonthsForStudent,
+        appliedMonths: monthsToApply,
+        skippedMonths: appliedMonths,
         breakdown: feeBreakdown,
         totals: {
           original: totalOriginal,
           final: totalFinal,
         },
+        routeFee: transportFeePerMonth,
       },
     });
   } catch (err) {
@@ -143,6 +280,178 @@ export const applyFees = async (req, res) => {
   }
 };
 
+export const getPendingFees = async (req, res) => {
+  const admissionNo =
+    req.method === "GET" ? req.query.admissionNo : req.body.admissionNo;
+
+  if (!admissionNo) {
+    return res.status(400).json({
+      success: false,
+      message: "Admission number is required",
+    });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+
+    // 1. Get student details
+    const [studentRows] = await connection.query(
+      "SELECT * FROM students WHERE admissionNumber = ?",
+      [admissionNo]
+    );
+
+    if (studentRows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found",
+      });
+    }
+
+    const student = studentRows[0];
+
+    // 2. Get pending months from student_months table
+    const [availableMonths] = await connection.query(
+      "SELECT month FROM student_months WHERE admissionNo = ? ORDER BY id ASC",
+      [admissionNo]
+    );
+
+    const remainingMonths = availableMonths.map((m) => m.month);
+
+    // 3. Get fee plans for the student's class & category
+    const [feePlans] = await connection.query(
+      "SELECT * FROM fees_plan WHERE className = ? AND category = ?",
+      [student.class, student.category]
+    );
+
+    // 4. Get paid fees (grouped by feesHeading)
+    const [paidFeesRows] = await connection.query(
+      "SELECT feesHeading, SUM(recd_amt) as paidAmount FROM fees_register WHERE admissionNumber = ? GROUP BY feesHeading",
+      [admissionNo]
+    );
+
+    const paidFees = paidFeesRows.map((row) => ({
+      feesHeading: row.feesHeading,
+      paidAmount: Number(row.paidAmount || 0),
+    }));
+
+    // 5. Get all paid months
+    const [paidMonthsRows] = await connection.query(
+      "SELECT DISTINCT months FROM fees_register WHERE admissionNumber = ? AND months IS NOT NULL",
+      [admissionNo]
+    );
+
+    const allPaidMonths = [];
+    paidMonthsRows.forEach((row) => {
+      if (row.months) {
+        const months = row.months.split(",").map((m) => m.trim());
+        allPaidMonths.push(...months);
+      }
+    });
+    const uniquePaidMonths = [...new Set(allPaidMonths)];
+
+    // 6. Prepare pending academic fees
+    const pendingFees = feePlans.map((plan) => {
+      const paidRecord = paidFees.find((p) => p.feesHeading === plan.feesHeading);
+      const paid = paidRecord ? paidRecord.paidAmount : 0;
+      const balance = Math.max(Number(plan.value) - paid, 0);
+
+      return {
+        feesHeading: plan.feesHeading,
+        total: Number(plan.value),
+        paid,
+        balance,
+        months: remainingMonths.length > 0 ? remainingMonths.join(", ") : "No Pending Months",
+        paidMonths: uniquePaidMonths,
+      };
+    });
+
+    // 7. Handle Transport Fee
+    if (student.routeName) {
+      const [routePlanData] = await connection.query(
+        "SELECT price FROM route_plans WHERE class_name = ? AND category_name = ? AND route_name = ?",
+        [student.class, student.category, student.routeName]
+      );
+
+      if (routePlanData.length > 0) {
+        const routePrice = Number(routePlanData[0].price);
+        const paidTransport = paidFees.find((p) => p.feesHeading === "Transport Fee");
+        const paidAmount = paidTransport ? paidTransport.paidAmount : 0;
+
+        pendingFees.push({
+          feesHeading: "Transport Fee",
+          total: routePrice * remainingMonths.length,
+          paid: paidAmount,
+          balance: Math.max(routePrice * remainingMonths.length - paidAmount, 0),
+          months: remainingMonths.length > 0 ? remainingMonths.join(", ") : "No Pending Months",
+          paidMonths: uniquePaidMonths,
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      admissionNo,
+      student,
+      pendingFees,
+      remainingMonths,
+      paidMonths: uniquePaidMonths,
+    });
+  } catch (error) {
+    console.error("❌ Error fetching pending fees:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch pending fees",
+      error: error.message,
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+};
+export const updateFeesPlan = async (req, res) => {
+  const { id } = req.params;
+  const { feesHeading, value, className, category } = req.body;
+
+  if (!feesHeading || !value || !className || !category) {
+    return res.status(400).json({
+      success: false,
+      message: "Missing required fields for update",
+    });
+  }
+
+  try {
+    const [result] = await pool.query(
+      `UPDATE fees_plan SET feesHeading = ?, value = ?, className = ?, category = ? WHERE id = ?`,
+      [feesHeading, value, className, category, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, message: "Fee plan not found" });
+    }
+
+    res.status(200).json({ success: true, message: "Fee plan updated successfully" });
+  } catch (err) {
+    console.error("Update error:", err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+export const deleteFeesPlan = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const [result] = await pool.query(`DELETE FROM fees_plan WHERE id = ?`, [id]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, message: "Fee plan not found" });
+    }
+
+    res.status(200).json({ success: true, message: "Fee plan deleted successfully" });
+  } catch (err) {
+    console.error("Delete error:", err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
 
 export const addFeesPlan = async (req, res) => {
   const { feesHeading, value, classes, categories } = req.body;
@@ -150,8 +459,7 @@ export const addFeesPlan = async (req, res) => {
   if (!feesHeading || !value || !classes || !categories) {
     return res.status(400).json({
       success: false,
-      message:
-        "Missing required fields: feesHeading, value, classes, or categories",
+      message: "Missing required fields: feesHeading, value, classes, or categories",
     });
   }
 
@@ -193,52 +501,194 @@ export const addFeesPlan = async (req, res) => {
   }
 };
 
-// GET /api/student/:admissionNumber
+
 export const getStudentByAdmission = async (req, res) => {
-  const { admissionNumber } = req.params;
+  const { admissionNo } = req.params;
 
   try {
-    const connection = await pool.getConnection();
-    const [rows] = await connection.execute(
-      `SELECT * FROM students WHERE admissionNumber = ?`,
-      [admissionNumber]
+    // 1. Fetch student data
+    const [studentResult] = await pool.query(
+      "SELECT * FROM students WHERE admissionNumber = ?",
+      [admissionNo]
     );
-    connection.release();
 
-    if (rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Student not found",
-      });
+    if (studentResult.length === 0) {
+      return res.status(404).json({ success: false, message: "Student not found" });
     }
 
-    const months = [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
-    ];
+    const student = studentResult[0];
+
+       // 2. Initialize student_months if not exists (for new students)
+    const [existingMonths] = await connection.query(
+      "SELECT COUNT(*) AS cnt FROM student_months WHERE admissionNo = ?",
+      [admissionNo]
+    );
+
+    if (existingMonths[0].cnt === 0) {
+      // Insert all 12 months for new student
+      const allMonths = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'];
+      for (const month of allMonths) {
+        await connection.query(
+          "INSERT IGNORE INTO student_months (admissionNo, month) VALUES (?, ?)",
+          [admissionNo, month]
+        );
+      }
+    }
+
+    // 3. Fetch remaining months
+    const [monthsResult] = await connection.query(
+      "SELECT month FROM student_months WHERE admissionNo = ? ORDER BY id ASC",
+      [admissionNo]
+    );
+
+    const months = monthsResult.map(m => m.month);
+
+    // 4. Fetch pending fees from fees_register
+    const [pendingResult] = await connection.query(
+      "SELECT feesHeading, SUM(balance) as balance, GROUP_CONCAT(month ORDER BY month) as months FROM fees_register WHERE admissionNumber = ? AND balance > 0 GROUP BY feesHeading",
+      [admissionNo]
+    );
+
+    const pendingFees = pendingResult || [];
+
+    // 5. Return combined data
+    res.json({
+      success: true,
+      student,
+      months,
+      pendingFees,
+    });
+
+  } catch (error) {
+    console.error("Error fetching student details:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  } finally {
+    if (connection) connection.release();
+  }
+
+};
+export const getAllFeesRecords = async (req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT * FROM fees_register ORDER BY id DESC");
 
     res.json({
       success: true,
-      student: rows[0],
-      months,
+      data: rows,
     });
-  } catch (err) {
-    console.error("Error fetching student:", err.message);
+  } catch (error) {
+    console.error("Fetch error:", error);
     res.status(500).json({
       success: false,
-      message: "Internal server error",
-      error: err.message,
+      message: "Failed to fetch fees records",
+      error: error.message,
     });
   }
 };
 
+export const fees_Register = async (req, res) => {
+  const {
+    date,
+    rec_no,
+    admissionNumber,
+    student_name,
+    className,
+    category,
+    routeName,
+    months,
+    fees,
+    total,
+    recd_amt,
+    balance,
+    feesHeading,
+    late_fee = 0,
+    discount = 0
+  } = req.body;
+
+  // Validate required fields
+  if (!admissionNumber || !recd_amt || !date || !rec_no) {
+    return res.status(400).json({
+      success: false,
+      message: "Admission number, receipt number, date, and amount are required",
+    });
+  }
+
+  if (!months || months.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Months field is required",
+    });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+
+    // STEP 1: Get student details if not provided
+    let studentData = student_name;
+    if (!student_name) {
+      const [[student]] = await connection.query(
+        "SELECT firstName, lastName FROM students WHERE admissionNumber = ?",
+        [admissionNumber]
+      );
+      if (!student) {
+        return res.status(404).json({
+          success: false,
+          message: "Student not found",
+        });
+      }
+      studentData = `${student.firstName} ${student.lastName}`;
+    }
+
+    // STEP 2: Calculate total if not provided
+    let totalAmount = total || fees + late_fee - discount;
+    let balanceAmount = balance || totalAmount - recd_amt;
+
+    // STEP 3: Insert into fees_register table
+    const insertQuery = `
+      INSERT INTO fees_register 
+      (date, rec_no, admissionNumber, student_name, class, category, route, months, fees, late_fee, ledger_amt, discount, total, recd_amt, balance, feesHeading) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    await connection.query(insertQuery, [
+      date,
+      rec_no,
+      admissionNumber,
+      studentData,
+      className,
+      category,
+      routeName,
+      months,
+      fees,
+      late_fee,
+      totalAmount,  // ledger_amt
+      discount,
+      totalAmount,
+      recd_amt,
+      balanceAmount,
+      feesHeading,
+    ]);
+
+    res.status(201).json({
+      success: true,
+      message: "Fees recorded successfully",
+      data: {
+        admissionNumber,
+        student_name: studentData,
+        months,
+        totalAmount,
+        recd_amt,
+        balanceAmount,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Error recording fees:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Failed to record fees",
+      error: error.message,
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+};
