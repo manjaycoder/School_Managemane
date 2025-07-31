@@ -81,9 +81,6 @@ export const getAllFeesHeadings = async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 };
-
-
-
 export const applyFees = async (req, res) => {
   const { admissionNo, className, category, selectedMonths } = req.body;
 
@@ -105,31 +102,30 @@ export const applyFees = async (req, res) => {
   try {
     connection = await pool.getConnection();
 
-    // STEP 1: Get Student Info
+    // Step 1: Fetch student info
     const [[student]] = await connection.query(
-      "SELECT * FROM students WHERE admissionNumber = ?",
+      `SELECT * FROM students WHERE admissionNumber = ?`,
       [admissionNo]
     );
+
     if (!student) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Student not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Student not found",
+      });
     }
 
     const studentRoute = student.routeName || student.route || null;
     const feeBreakdown = [];
 
-    // STEP 2: Check if Fees Already Applied for Selected Months
+    // Step 2: Already applied months
     const placeholders = selectedMonths.map(() => "?").join(",");
     const [alreadyApplied] = await connection.query(
-      `SELECT DISTINCT months 
-       FROM fees_register 
-       WHERE admissionNumber = ? 
-         AND months IN (${placeholders})`,
+      `SELECT DISTINCT months FROM fees_register WHERE admissionNumber = ? AND months IN (${placeholders})`,
       [admissionNo, ...selectedMonths]
     );
 
-    const appliedMonths = alreadyApplied.map((r) => r.months);
+    const appliedMonths = alreadyApplied.map((row) => row.months);
     const monthsToApply = selectedMonths.filter(
       (m) => !appliedMonths.includes(m)
     );
@@ -137,21 +133,21 @@ export const applyFees = async (req, res) => {
     if (monthsToApply.length === 0) {
       return res.status(409).json({
         success: false,
-        message: "Fees for the selected months have already been applied",
+        message: "Fees already applied for all selected months",
         alreadyApplied: appliedMonths,
       });
     }
 
-    // STEP 3: Academic Fees
+    // Step 3: Academic Fees
     const [feePlans] = await connection.query(
-      "SELECT * FROM fees_plan WHERE className = ? AND category = ?",
+      `SELECT * FROM fees_plan WHERE className = ? AND category = ?`,
       [className, category]
     );
 
     if (feePlans.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "No fee plan found for class and category",
+        message: "No academic fee plan found",
       });
     }
 
@@ -166,55 +162,55 @@ export const applyFees = async (req, res) => {
       }
     }
 
-    // STEP 4: Route Fee
+    // Step 4: Transport Fee (if applicable)
     let transportFeePerMonth = 0;
+
     if (studentRoute) {
-      const [routePlanData] = await connection.query(
-        "SELECT price FROM route_plans WHERE class_name = ? AND category_name = ? AND route_name = ?",
+      const [routePriceRows] = await connection.query(
+        `SELECT price FROM route_plans WHERE class_name = ? AND category_name = ? AND route_name = ?`,
         [className, category, studentRoute]
       );
 
-      const [routeMonthsData] = await connection.query(
-        "SELECT months FROM routes WHERE route_name = ?",
+      const [routeMonthsRows] = await connection.query(
+        `SELECT months FROM routes WHERE route_name = ?`,
         [studentRoute]
       );
 
-      if (routePlanData.length > 0 && routeMonthsData.length > 0) {
-        transportFeePerMonth = Number(routePlanData[0].price || 0);
+      if (routePriceRows.length && routeMonthsRows.length) {
+        transportFeePerMonth = Number(routePriceRows[0].price || 0);
+        const validMonths = routeMonthsRows[0].months
+          .split(",")
+          .map((m) => m.trim().toLowerCase());
 
-        const routeAvailableMonths = routeMonthsData[0].months
-          ? routeMonthsData[0].months.split(",").map((m) => m.trim())
-          : [];
-
-        const applicableRouteMonths = monthsToApply.filter((month) =>
-          routeAvailableMonths.some(
-            (rm) => rm.toLowerCase() === month.toLowerCase()
-          )
-        );
-
-        for (const month of applicableRouteMonths) {
-          feeBreakdown.push({
-            feesHeading: "Transport Fee",
-            month,
-            originalAmount: transportFeePerMonth,
-            finalAmount: transportFeePerMonth,
-          });
+        for (const month of monthsToApply) {
+          if (validMonths.includes(month.toLowerCase())) {
+            feeBreakdown.push({
+              feesHeading: "Transport Fee",
+              month,
+              originalAmount: transportFeePerMonth,
+              finalAmount: transportFeePerMonth,
+            });
+          }
         }
       }
     }
 
-    // STEP 5: Insert into fees_register (Only for monthsToApply)
+    // Step 5: Insert into fees_register
     for (const month of monthsToApply) {
-      const monthBreakdown = feeBreakdown.filter((item) => item.month === month);
-      const totalForMonth = monthBreakdown.reduce((sum, item) => sum + item.finalAmount, 0);
-      const feeHeadings = monthBreakdown.map((item) => item.feesHeading).join(", ");
+      const monthItems = feeBreakdown.filter((f) => f.month === month);
+      const totalAmount = monthItems.reduce((sum, f) => sum + f.finalAmount, 0);
+      const feeHeads = monthItems.map((f) => f.feesHeading).join(", ");
 
       await connection.query(
-        `INSERT INTO fees_register 
-        (date, rec_no, admissionNumber, roll_no, student_name, class, category, route, months, fees, late_fee, ledger_amt, discount, total, recd_amt, balance, feesHeading)
-         VALUES (CURDATE(), ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, 0, ?, ? )`,
+        `INSERT INTO fees_register (
+          date, rec_no, admissionNumber, roll_no, student_name,
+          class, category, route, months, fees, late_fee,
+          ledger_amt, discount, total, recd_amt, balance, feesHeading
+        ) VALUES (
+          CURDATE(), ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, ?, 0, ?, ?
+        )`,
         [
-          `REC-${Date.now()}`,   // Generate unique receipt number
+          `REC-${Date.now()}`,
           admissionNo,
           student.roll_no || null,
           `${student.firstName} ${student.lastName}`.trim(),
@@ -222,40 +218,31 @@ export const applyFees = async (req, res) => {
           category,
           studentRoute,
           month,
-          totalForMonth,         // fees
-          totalForMonth,         // ledger_amt
-          0,                     // discount
-          totalForMonth,         // total
-          totalForMonth,         // balance
-          feeHeadings
+          totalAmount,
+          totalAmount,
+          totalAmount,
+          totalAmount,
+          feeHeads,
         ]
       );
     }
 
-    // STEP 6: DELETE Applied Months from student_months
+    // Step 6: Remove from student_months
     if (monthsToApply.length > 0) {
       const delPlaceholders = monthsToApply.map(() => "?").join(",");
       await connection.query(
-        `DELETE FROM student_months 
-         WHERE admissionNo = ? 
-           AND month IN (${delPlaceholders})`,
+        `DELETE FROM student_months WHERE admissionNo = ? AND month IN (${delPlaceholders})`,
         [admissionNo, ...monthsToApply]
       );
     }
 
-    // STEP 7: Totals
-    const totalOriginal = feeBreakdown.reduce(
-      (sum, item) => sum + item.originalAmount,
-      0
-    );
-    const totalFinal = feeBreakdown.reduce(
-      (sum, item) => sum + item.finalAmount,
-      0
-    );
+    // Step 7: Totals
+    const totalOriginal = feeBreakdown.reduce((sum, f) => sum + f.originalAmount, 0);
+    const totalFinal = feeBreakdown.reduce((sum, f) => sum + f.finalAmount, 0);
 
     res.status(200).json({
       success: true,
-      message: "Fees applied successfully for pending months",
+      message: "Fees applied successfully",
       data: {
         admissionNo,
         appliedMonths: monthsToApply,
@@ -269,7 +256,7 @@ export const applyFees = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("❌ Error applying fees:", err.message);
+    console.error("❌ TiDB Apply Fees Error:", err.message);
     res.status(500).json({
       success: false,
       message: "Internal server error",
@@ -279,6 +266,7 @@ export const applyFees = async (req, res) => {
     if (connection) connection.release();
   }
 };
+
 
 export const getPendingFees = async (req, res) => {
   const admissionNo =
