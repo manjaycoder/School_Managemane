@@ -1,4 +1,3 @@
-import React from "react";
 import Card from "../Components/Card";
 import AdminNav from "../Components/AdminNav";
 import graph from "../assets/graph.png";
@@ -33,7 +32,6 @@ const Admin = () => {
       <AdminNav />
 
       <div className=" flex flex-center justify-center mt-4 gap-3">
-        {" "}
         <img src={graph} className="w-[2rem] h-[2rem]  " />
         <h1 className="text-zinc-800 font-mono font-bold text-2xl select-none">
           Welcome to Dashboard

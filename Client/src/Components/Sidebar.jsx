@@ -1,7 +1,7 @@
-import { Sidebar, Menu, MenuItem, SubMenu } from 'react-pro-sidebar';
+import { Sidebar, Menu, MenuItem, SubMenu } from "react-pro-sidebar";
 
 <Sidebar>
-  <Menu  >
+  <Menu>
     <SubMenu label="Charts">
       <MenuItem> Pie charts </MenuItem>
       <MenuItem> Line charts </MenuItem>

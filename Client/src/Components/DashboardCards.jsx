@@ -1,11 +1,11 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from "react";
+import { useNavigate } from "react-router-dom";
 
 const ActionCard = ({ title, buttons }) => {
   const navigate = useNavigate();
 
   const handleClick = (btn) => {
-    const route = btn.toLowerCase().replace(/\s+/g, '-');
+    const route = btn.toLowerCase().replace(/\s+/g, "-");
     navigate(`/${route}`);
   };
 
@@ -34,52 +34,56 @@ const Dashboard = () => {
     {
       category: "School Management",
       cards: [
-        { title: 'Admission', buttons: ['Adm. Enquiry', 'Admission'] },
-        { title: 'Student', buttons: ['Std Details', 'searchStudent'] },
-      ]
+        { title: "Admission", buttons: ["Adm. Enquiry", "Admission"] },
+        { title: "Student", buttons: ["Std Details", "searchStudent"] },
+      ],
     },
     {
       category: "Finance",
       cards: [
-        { title: 'Fees', buttons: ['Fees Dues', 'Collect Fee'] },
-        { title: 'Fees Plan', buttons: ['One Time Fee', 'Monthly Fee'] },
-        { title: 'Income/Expense', buttons: ['Income', 'Expense'] },
-      ]
+        { title: "Fees", buttons: ["Fees Dues", "Collect Fee"] },
+        { title: "Fees Plan", buttons: ["One Time Fee", "Monthly Fee"] },
+        { title: "Income/Expense", buttons: ["Income", "Expense"] },
+      ],
     },
     {
       category: "Attendance",
       cards: [
-        { title: 'Attendance', buttons: ['Std-Attendance', 'Staff Attendance'] },
-      ]
+        {
+          title: "Attendance",
+          buttons: ["Std-Attendance", "Staff Attendance"],
+        },
+      ],
     },
     {
       category: "Academics",
       cards: [
-        { title: 'Examinations', buttons: ['Admit Card', 'Marksheet'] },
-        { title: 'Timetable', buttons: ['Class', 'Teacher'] },
-        { title: 'Lesson Plan', buttons: ['Create', 'View'] },
-      ]
+        { title: "Examinations", buttons: ["Admit Card", "Marksheet"] },
+        { title: "Timetable", buttons: ["Class", "Teacher"] },
+        { title: "Lesson Plan", buttons: ["Create", "View"] },
+      ],
     },
     {
       category: "Communication",
-      cards: [
-        { title: 'Communicate', buttons: ['SMS', 'Notice'] },
-      ]
+      cards: [{ title: "Communicate", buttons: ["SMS", "Notice"] }],
     },
     {
       category: "Facilities",
       cards: [
-        { title: 'Transport/Hostel', buttons: ['Routes', 'Hostel Rooms'] },
-      ]
+        { title: "Transport/Hostel", buttons: ["Routes", "Hostel Rooms"] },
+      ],
     },
     {
       category: "Reports",
       cards: [
-        { title: 'Financial Reports', buttons: ['Fees Report', 'Collection Report'] },
-        { title: 'Academic Reports', buttons: ['Attendance', 'Examinations'] },
-        { title: 'HR Reports', buttons: ['Staff', 'Payroll'] },
-      ]
-    }
+        {
+          title: "Financial Reports",
+          buttons: ["Fees Report", "Collection Report"],
+        },
+        { title: "Academic Reports", buttons: ["Attendance", "Examinations"] },
+        { title: "HR Reports", buttons: ["Staff", "Payroll"] },
+      ],
+    },
   ];
 
   return (
@@ -96,13 +100,19 @@ const Dashboard = () => {
           <section key={idx} className="mb-16">
             <div className="flex items-center mb-6">
               <div className="w-1.5 h-6 bg-blue-600 mr-3 rounded"></div>
-              <h2 className="text-2xl font-bold text-gray-800">{category.category}</h2>
+              <h2 className="text-2xl font-bold text-gray-800">
+                {category.category}
+              </h2>
               <div className="flex-1 ml-4 h-px bg-gray-300"></div>
             </div>
 
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {category.cards.map((card, index) => (
-                <ActionCard key={`${idx}-${index}`} title={card.title} buttons={card.buttons} />
+                <ActionCard
+                  key={`${idx}-${index}`}
+                  title={card.title}
+                  buttons={card.buttons}
+                />
               ))}
             </div>
           </section>

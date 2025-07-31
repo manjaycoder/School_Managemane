@@ -26,14 +26,23 @@ export const getStudentByAdmissionNumber = async (req, res) => {
 
     // Fallback: all months
     const allMonths = [
-      "January", "February", "March", "April",
-      "May", "June", "July", "August",
-      "September", "October", "November", "December"
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
     ];
 
     // Student's available months (or fallback to all)
     const studentMonths = student.months
-      ? student.months.split(',').map((m) => m.trim())
+      ? student.months.split(",").map((m) => m.trim())
       : allMonths;
 
     res.status(200).json({
@@ -41,7 +50,6 @@ export const getStudentByAdmissionNumber = async (req, res) => {
       student,
       months: studentMonths,
     });
-
   } catch (err) {
     console.error("Error fetching student:", err.message);
     res.status(500).json({
@@ -64,13 +72,13 @@ export const addStudent = [
       const data = req.body;
       const files = req.files || {};
 
-      // Validation
       const requiredFields = {
         firstName: "First name is required",
         lastName: "Last name is required",
         dob: "Date of birth is required",
         class: "Class is required",
         section: "Section is required",
+        routeName: "Route name is required", // Added
         fatherName: "Father's name is required",
         fatherPhoneNumber: "Father's phone number is required",
       };
@@ -87,7 +95,6 @@ export const addStudent = [
         });
       }
 
-      // File processing
       const processFile = (fileArray) =>
         fileArray && fileArray.length > 0 ? fileArray[0].filename : null;
 
@@ -99,13 +106,13 @@ export const addStudent = [
       await connection.beginTransaction();
 
       const sql = `INSERT INTO students (
-        admissionNumber,firstName, middleName, lastName, dob, class, section, email,
-        bloodGroup, gender, height, weight, category, religion, caste,
+        admissionNumber, firstName, middleName, lastName, dob, class, section, routeName,
+        email, bloodGroup, gender, height, weight, category, religion, caste,
         fatherName, fatherPhoneNumber, fatherOccupation, fatherQualification,
         fatherAdharNo, fatherImage, motherName, motherPhoneNumber,
         motherOccupation, motherAdharNo, motherImage, documents,
         admissionDate, rollNo, currentAddress, permanentAddress
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)`;
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`; 
 
       const values = [
         data.admissionNumber,
@@ -114,8 +121,8 @@ export const addStudent = [
         data.lastName,
         data.dob,
         data.class,
-        
         data.section,
+        data.routeName, // Added
         data.email || null,
         data.bloodGroup || null,
         data.gender || null,
@@ -168,6 +175,7 @@ export const addStudent = [
   },
 ];
 
+
 export const getStudents = async (req, res) => {
   try {
     const { class: className, section, keyword } = req.query;
@@ -200,7 +208,9 @@ export const getStudents = async (req, res) => {
 
 export const getStudentById = async (req, res) => {
   try {
-    const [rows] = await pool.query("SELECT * FROM students WHERE id = ?", [req.params.id]);
+    const [rows] = await pool.query("SELECT * FROM students WHERE id = ?", [
+      req.params.id,
+    ]);
     if (rows.length === 0) {
       return res.status(404).json({ error: "Student not found" });
     }

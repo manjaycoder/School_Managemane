@@ -1,5 +1,5 @@
 import React from "react";
-import grap from "../assets/graph_1378621.png"
+import grap from "../assets/graph_1378621.png";
 import {
   BarChart,
   Bar,
@@ -32,15 +32,15 @@ const IncomeExpenseCard = () => {
   return (
     <div className="p-6 bg-white rounded-lg shadow-xl m-6 max-w-4xl mx-auto  ">
       <h2 className="text-2xl font-bold text-start mb-6 text-gray-800 flex gap-2">
-       <img src={grap} className="w-[2rem] h-[2rem]" /> Income v/s Expense - Last 5 Months 
+        <img src={grap} className="w-[2rem] h-[2rem]" /> Income v/s Expense -
+        Last 5 Months
       </h2>
-       <div className="flex items-center justify-center gap-2 ml-4">
-          <div className="inline-block w-6 h-4 bg-blue-500 rounded"></div> 
-          <span className="text-lg font-normal">Expense</span>
-          <div className="inline-block w-6 h-4 bg-red-500 rounded ml-2"></div> 
-          <span className="text-lg font-normal">Income</span>
-        </div>
-
+      <div className="flex items-center justify-center gap-2 ml-4">
+        <div className="inline-block w-6 h-4 bg-blue-500 rounded"></div>
+        <span className="text-lg font-normal">Expense</span>
+        <div className="inline-block w-6 h-4 bg-red-500 rounded ml-2"></div>
+        <span className="text-lg font-normal">Income</span>
+      </div>
 
       <ResponsiveContainer width="100%" height={400}>
         <BarChart

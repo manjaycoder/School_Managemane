@@ -21,10 +21,14 @@ const AdminNav = () => {
       label: "Branch",
       icon: <FaUserGraduate className="mr-1" />,
       options: [
-        { label: "Add Branch", path: "/public" },
-        { label: "View Branch", path: "/view-branch" },
-        { label: "Delete Branch", path: "/delete-branch" },
-        { label: "Update Branch", path: "/update-branch" },
+        { label: "Admission", path: "/Admission" },
+        { label: "Create-Fees-Heading", path: "/Create-Fees-Heading" },
+        { label: "Fees-Receipt", path: "/Fees-Receipt" },
+        { label: "fees_Register", path: "/fees_Register" },
+        { label: "create", path: "/create" },
+        { label: "CreateFee", path: "/CreateFee" },
+        { label: "ConfigueFee", path: "/ConfigueFee" },
+        { label: "FeesHeadWiseCollection", path: "/FeesHeadWiseCollection" },
       ],
     },
     {
@@ -32,10 +36,25 @@ const AdminNav = () => {
       label: "Student System",
       icon: <FaUserGraduate className="mr-1" />,
       options: [
-        { label: "Add Student", path: "/add-student" },
-        { label: "View Students", path: "/view-students" },
-        { label: "Student Reports", path: "/student-reports" },
-        { label: "Attendance", path: "/attendance" },
+        { label: "Std-Attendance", path: "/Std-Attendance" },
+        { label: "ConfigureFeesPlan", path: "/ConfigureFeesPlan" },
+        { label: "accounts", path: "/accounts" },
+        { label: "Create-Fees-Heading", path: "/Create-Fees-Heading" },
+        { label: "Create-Account", path: "/Create-Account" },
+        { label: "routes", path: "/routes" },
+        { label: "apply-Routes", path: "/apply-Routes" },
+        { label: "section-manager", path: "/section-manager" },
+        { label: "searchStudent", path: "/searchStudent" },
+        { label: "students/:id", path: "/students/:id" },
+        { label: "class-manager", path: "/class-manager" },
+        { label: "attendance-criteria", path: "/attendance-criteria" },
+        { label: "PaymentDetailsTable", path: "/PaymentDetailsTable" },
+        { label: "Vehicle", path: "/attendance" },
+        { label: "Assign Vehicle", path: "/add-student" },
+        { label: "Assign Hostel", path: "/view-students" },
+        { label: "Room Type", path: "/student-reports" },
+        { label: "Design Student Certificate", path: "/attendance" },
+        { label: "Design Students ID Card", path: "/attendance" },
       ],
     },
     {
@@ -54,10 +73,23 @@ const AdminNav = () => {
       label: "System Settings",
       icon: <FaCog className="mr-1" />,
       options: [
-        { label: "User Management", path: "/user-management" },
-        { label: "System Configuration", path: "/system-config" },
-        { label: "Backup", path: "/backup" },
-        { label: "Preferences", path: "/preferences" },
+        { label: "General Setting", path: "/user-management" },
+        { label: "Session Setting", path: "/system-config" },
+        { label: "Notification Setting", path: "/backup" },
+        { label: "SMS Setting", path: "/preferences" },
+        { label: "Email Setting", path: "/user-management" },
+        { label: "Payment Methods", path: "/system-config" },
+        { label: "Print Header Footer", path: "/backup" },
+        { label: "From CMS Setting", path: "/preferences" },
+        { label: "Role Permission", path: "/user-management" },
+        { label: "Language", path: "/system-config" },
+        { label: "Users", path: "/backup" },
+        { label: "Modules", path: "/preferences" },
+        { label: "Custom Fields", path: "/backup" },
+        { label: "Captcha Setting", path: "/preferences" },
+        { label: "System Field", path: "/user-management" },
+        { label: "Online Admission", path: "/system-config" },
+        { label: "File types", path: "/backup" },
       ],
     },
   ];
@@ -110,7 +142,7 @@ const AdminNav = () => {
               <div key={item.id} className="relative group">
                 <button
                   onClick={() => handleMenuClick(item.id)}
-                  className={`px-3 py-2 rounded-md text-sm font-medium flex items-center bg-blue-600 text-white hover:bg-blue-900`}
+                  className={`px-2 py-1 rounded-md text-sm font-medium flex items-center bg-blue-600 text-white hover:bg-blue-900`}
                 >
                   {item.icon}
                   {item.label}
@@ -122,7 +154,7 @@ const AdminNav = () => {
                       <button
                         key={index}
                         onClick={() => navigate(option.path)}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 select-none"
+                        className="block w-full text-left px-4 py-[5px] text-sm text-gray-700 hover:bg-gray-100 select-none"
                       >
                         {option.label}
                       </button>

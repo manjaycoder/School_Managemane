@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+import MainLayout from "../layout/MainLayout";
 
 const ClassManager = () => {
-  const availableSections = ["A", "B", "C", "D", "E","F","G","H","I","J"];
+  const availableSections = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
   const [className, setClassName] = useState("");
   const [selectedSections, setSelectedSections] = useState([]);
   const [classes, setClasses] = useState([]);
@@ -35,7 +36,10 @@ const ClassManager = () => {
       const data = await response.json();
 
       if (response.ok) {
-        setClasses([...classes, { name: className, sections: selectedSections }]);
+        setClasses([
+          ...classes,
+          { name: className, sections: selectedSections },
+        ]);
         setClassName("");
         setSelectedSections([]);
         alert("✅ Class and sections saved!");
@@ -48,6 +52,7 @@ const ClassManager = () => {
   };
 
   return (
+    <MainLayout>
     <div className="p-6 max-w-xl mx-auto">
       <h2 className="text-2xl font-bold mb-4">Class Manager</h2>
 
@@ -95,6 +100,7 @@ const ClassManager = () => {
         </ul>
       </div>
     </div>
+    </MainLayout>
   );
 };
 

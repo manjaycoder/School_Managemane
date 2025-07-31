@@ -3,12 +3,12 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 
-// __dirname workaround for ESM
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const storage = multer.diskStorage({
-  destination: (_, __, cb) => cb(null, join(__dirname, "../uploads")),
+  destination: (_, __, cb) => cb(null, join(__dirname, "")),
   filename: (_, file, cb) => {
     const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
     cb(null, `${unique}${path.extname(file.originalname)}`);
@@ -23,7 +23,7 @@ const fileFilter = (_, file, cb) => {
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  limits: { fileSize: 5 * 1024 * 1024 }, 
 });
 
 export default upload;
