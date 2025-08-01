@@ -178,13 +178,15 @@ export const applyFees = async (req, res) => {
 
       if (routePriceRows.length && routeMonthsRows.length) {
         transportFeePerMonth = Number(routePriceRows[0].price || 0);
-        const validMonths = routeMonthsRows[0].months
-          .split(",")
-          .map((m) => m.trim().toLowerCase());
+       
+      const monthsStr = routeMonthsRows[0].months || "";
+     const validMonths = monthsStr
+        .split(",")
+         .map((m) => m.trim().toLowerCase())
+         .filter(Boolean);
 
         for (const month of monthsToApply) {
-          if (validMonths.includes(month.toLowerCase())) {
-            feeBreakdown.push({
+          if (validMonths.includes(month.toLowerCase())) {            feeBreakdown.push({
               feesHeading: "Transport Fee",
               month,
               originalAmount: transportFeePerMonth,

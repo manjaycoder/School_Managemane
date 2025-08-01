@@ -70,13 +70,14 @@ export const addStudent = async (req, res) => {
   try {
     // 1. Check duplicate admission number
     const [existingStudent] = await connection.query(
-      "SELECT admissionNumber FROM students WHERE admissionNumber = ?",
+      "SELECT admissionNumber FROM students WHERE LOWER(TRIM(admissionNumber)) = LOWER(TRIM(?))",
       [data.admissionNumber]
     );
     if (existingStudent.length > 0) {
-      return res.status(409).json({ message: "Admission number already exists." });
+      return res
+        .status(409)
+        .json({ message: "Admission number already exists." });
     }
-
     // 2. Upload photo
     let photoPath = null;
     if (file) {
@@ -111,7 +112,7 @@ export const addStudent = async (req, res) => {
         data.state,
         data.pincode,
         data.routeName,
-        photoPath
+        photoPath,
       ]
     );
 
@@ -136,7 +137,8 @@ export const addStudent = async (req, res) => {
 
     // 7. Prepare fees_register insert data
     const now = new Date();
-    const studentName = `${data.firstName} ${data.middleName} ${data.lastName}`.trim();
+    const studentName =
+      `${data.firstName} ${data.middleName} ${data.lastName}`.trim();
     const commonValues = {
       admissionNumber: data.admissionNumber,
       roll_no: data.roll_no || "",
@@ -183,7 +185,7 @@ export const addStudent = async (req, res) => {
         transportFee,
         0,
         transportFee,
-      ]
+      ],
     ]);
 
     await connection.query(
@@ -197,7 +199,7 @@ export const addStudent = async (req, res) => {
     // 8. Insert into student_months table
     const monthsInsert = feeMonths.map(({ month }) => [
       data.admissionNumber,
-      month
+      month,
     ]);
     await connection.query(
       "INSERT INTO student_months (admissionNumber, month) VALUES ?",
@@ -206,17 +208,19 @@ export const addStudent = async (req, res) => {
 
     // 9. Commit
     await connection.commit();
-    res.status(200).json({ success: true, message: "Student and fees added successfully." });
+    res
+      .status(200)
+      .json({ success: true, message: "Student and fees added successfully." });
   } catch (error) {
     await connection.rollback();
     console.error("Insert error:", error);
-    res.status(500).json({ success: false, message: "Failed to add student with fees." });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to add student with fees." });
   } finally {
     connection.release();
   }
 };
-
-
 
 export const getStudents = async (req, res) => {
   try {
