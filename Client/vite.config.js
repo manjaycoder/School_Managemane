@@ -4,11 +4,13 @@ import tailwindcss from '@tailwindcss/vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(),tailwindcss(),],
-  build: {
+   build: {
+    chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom'],
+          react: ['react', 'react-dom'],
+          vendor: ['axios', 'react-router-dom'], // add more if needed
         },
       },
     },
